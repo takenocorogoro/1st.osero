@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Othello (Reversi) - Single HTML</title>
+  <style>
+    :root{
+      --cell: 64px;
+      --gap: 6px;
+      --board: #0a7a2f;
+      --line: rgba(255,255,255,.18);
+      --text: #0f172a;
+      --muted: #475569;
+      --hint: #fbbf24;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --shadow: 0 12px 30px rgba(0,0,0,.08);
+      --radius: 18px;
+    }
+    *{ box-sizing: border-box; }
+    body{
+      margin:0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", sans-serif;
+      background: var(--bg); color: var(--text);
+      display:flex; justify-content:center; padding:22px;
+    }
+    .wrap{
+      width: min(720px, 100%);
+      display:grid;
+      gap: 14px;
+    }
+    .card{
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 16px;
+    }
+    h1{
+      margin:0 0 6px;
+      font-size: 18px;
+      letter-spacing: .02em;
+    }
+    .sub{
+      color: var(--muted);
+      font-size: 13px;
+      margin:0;
+      line-height: 1.45;
+    }
+    .top{
+      display:flex;
+      gap: 10px;
+      align-items:center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+    .stats{
+      display:flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items:center;
+      font-size: 14px;
+      color: var(--muted);
+    }
+    .pill{
+      padding: 8px 10px;
+      border-radius: 999px;
+      background: #f1f5f9;
+      color: #0f172a;
+      border: 1px solid #e2e8f0;
+    }
+    .btns{ display:flex; gap: 8px; flex-wrap: wrap; }
+    button{
+      appearance:none;
+      border: 1px solid #e2e8f0;
+      background: white;
+      color: #0f172a;
+      padding: 9px 12px;
+      border-radius: 12px;
+      cursor:pointer;
+      font-weight: 600;
+    }
+    button:hover{ background:#f8fafc; }
+    button:active{ transform: translateY(1px); }
+    .board{
+      display:grid;
+      grid-template-columns: repeat(8, var(--cell));
+      grid-template-rows: repeat(8, var(--cell));
+      gap: var(--gap);
+      padding: var(--gap);
+      background: var(--board);
+      border-radius: 22px;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,.08);
+      width: fit-content;
+      max-width: 100%;
+      overflow: auto;
+    }
+    .cell{
+      width: var(--cell);
+      height: var(--cell);
+      border-radius: 14px;
+      background: rgba(0,0,0,.08);
+      border: 1px solid rgba(255,255,255,.14);
+      display:grid;
+      place-items:center;
+      position: relative;
+      user-select:none;
+    }
+    .disc{
+      width: calc(var(--cell) * .72);
+      height: calc(var(--cell) * .72);
+      border-radius: 999px;
+      box-shadow: 0 10px 18px rgba(0,0,0,.18);
+      border: 2px solid rgba(0,0,0,.18);
+    }
+    .disc.black{ background: radial-gradient(circle at 30% 25%, #525252, #0b0b0b 60%); border-color: rgba(255,255,255,.08); }
+    .disc.white{ background: radial-gradient(circle at 30% 25%, #ffffff, #d6d6d6 65%); border-color: rgba(0,0,0,.12); }
+    .hint{
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: var(--hint);
+      box-shadow: 0 0 0 6px rgba(251,191,36,.18);
+      position:absolute;
+    }
+    .log{
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+      margin: 0;
+      white-space: pre-wrap;
+    }
+    .kbd{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      background:#0f172a;
+      color:white;
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin: 0 2px;
+    }
+    @media (max-width: 520px){
+      :root{ --cell: 46px; --gap: 5px; }
+      .card{ padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card top">
+      <div>
+        <h1>Othello（1ファイルHTML）</h1>
+        <p class="sub">黄色の点が「置ける場所」✨ クリックで置く→反転。置けない番は自動でパス。</p>
+      </div>
+      <div class="btns">
+        <button id="resetBtn">Reset</button>
+        <button id="toggleHintBtn">ヒント: ON</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stats" style="margin-bottom:12px;">
+        <span class="pill" id="turnPill">Turn: -</span>
+        <span class="pill" id="scorePill">Black: 2 / White: 2</span>
+        <span class="pill" id="msgPill">—</span>
+      </div>
+      <div class="board" id="board" aria-label="Othello Board"></div>
+    </div>
+
+    <div class="card">
+      <p class="log" id="log">
+操作：
+- クリック：石を置く
+- ヒント：置けるマスに黄色点（OFFにもできる）
+豆知識：オセロは「置いた石が相手の石を挟める」時だけ置けます。
+      </p>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const SIZE = 8;
+  const EMPTY = 0, BLACK = 1, WHITE = -1;
+  const DIRS = [
+    [-1,-1],[-1,0],[-1,1],
+    [ 0,-1],       [ 0,1],
+    [ 1,-1],[ 1,0],[ 1,1],
+  ];
+
+  const boardEl = document.getElementById("board");
+  const resetBtn = document.getElementById("resetBtn");
+  const toggleHintBtn = document.getElementById("toggleHintBtn");
+
+  const turnPill = document.getElementById("turnPill");
+  const scorePill = document.getElementById("scorePill");
+  const msgPill = document.getElementById("msgPill");
+
+  let board, current, showHints = true;
+
+  function init(){
+    board = Array.from({length: SIZE}, () => Array(SIZE).fill(EMPTY));
+    const m = SIZE/2;
+    board[m-1][m-1] = WHITE;
+    board[m][m]     = WHITE;
+    board[m-1][m]   = BLACK;
+    board[m][m-1]   = BLACK;
+    current = BLACK;
+    render();
+    maybeAutoPass();
+  }
+
+  function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
+  function opp(p){ return -p; }
+
+  function getFlips(r,c,p){
+    if (board[r][c] !== EMPTY) return [];
+    const flips = [];
+    const o = opp(p);
+
+    for (const [dr,dc] of DIRS){
+      let rr = r+dr, cc = c+dc;
+      const line = [];
+      while (inBounds(rr,cc) && board[rr][cc] === o){
+        line.push([rr,cc]);
+        rr += dr; cc += dc;
+      }
+      if (line.length && inBounds(rr,cc) && board[rr][cc] === p){
+        flips.push(...line);
+      }
+    }
+    return flips;
+  }
+
+  function validMoves(p){
+    const moves = [];
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        if (board[r][c] !== EMPTY) continue;
+        if (getFlips(r,c,p).length) moves.push([r,c]);
+      }
+    }
+    return moves;
+  }
+
+  function applyMove(r,c,p){
+    const flips = getFlips(r,c,p);
+    if (!flips.length) return false;
+    board[r][c] = p;
+    for (const [rr,cc] of flips) board[rr][cc] = p;
+    return true;
+  }
+
+  function count(){
+    let b=0,w=0;
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        if (board[r][c] === BLACK) b++;
+        else if (board[r][c] === WHITE) w++;
+      }
+    }
+    return {b,w};
+  }
+
+  function isGameOver(){
+    return validMoves(BLACK).length === 0 && validMoves(WHITE).length === 0;
+  }
+
+  function setStatus(message="—"){
+    const {b,w} = count();
+    const turnText = current === BLACK ? "Black 🖤" : "White 🤍";
+    turnPill.textContent = `Turn: ${turnText}`;
+    scorePill.textContent = `Black: ${b} / White: ${w}`;
+    msgPill.textContent = message;
+  }
+
+  function render(){
+    boardEl.innerHTML = "";
+    const moves = validMoves(current);
+    const moveSet = new Set(moves.map(([r,c]) => `${r},${c}`));
+
+    for (let r=0;r<SIZE;r++){
+      for (let c=0;c<SIZE;c++){
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+
+        const v = board[r][c];
+        if (v !== EMPTY){
+          const disc = document.createElement("div");
+          disc.className = "disc " + (v === BLACK ? "black" : "white");
+          cell.appendChild(disc);
+        } else if (showHints && moveSet.has(`${r},${c}`)){
+          const hint = document.createElement("div");
+          hint.className = "hint";
+          cell.appendChild(hint);
+        }
+
+        cell.addEventListener("click", () => onClick(r,c));
+        boardEl.appendChild(cell);
+      }
+    }
+
+    // メッセージ
+    if (isGameOver()){
+      const {b,w} = count();
+      let msg = `Game Over! `;
+      if (b>w) msg += `Black wins 🖤 (${b} - ${w})`;
+      else if (w>b) msg += `White wins 🤍 (${w} - ${b})`;
+      else msg += `Draw 🤝 (${b} - ${w})`;
+      setStatus(msg);
+      setTimeout(() => alert(msg), 50);
+      return;
+    }
+
+    const canMove = validMoves(current).length > 0;
+    setStatus(canMove ? "置ける場所に置いてね" : "置けないのでパスします…");
+  }
+
+  function switchTurn(){
+    current = opp(current);
+  }
+
+  function maybeAutoPass(){
+    // 現在の手番が置けない場合は自動パス。
+    // 両者置けないならゲーム終了へ。
+    if (isGameOver()){
+      render();
+      return;
+    }
+    if (validMoves(current).length === 0){
+      switchTurn();
+      render();
+      // それでも置けない場合（両者置けない）もあるので再チェック
+      if (validMoves(current).length === 0){
+        render();
+      }
+    }
+  }
+
+  function onClick(r,c){
+    if (isGameOver()) return;
+
+    // 置けないなら自動パス処理へ
+    if (validMoves(current).length === 0){
+      maybeAutoPass();
+      return;
+    }
+
+    const ok = applyMove(r,c,current);
+    if (!ok) return;
+
+    switchTurn();
+    render();
+    maybeAutoPass();
+  }
+
+  resetBtn.addEventListener("click", () => init());
+  toggleHintBtn.addEventListener("click", () => {
+    showHints = !showHints;
+    toggleHintBtn.textContent = `ヒント: ${showHints ? "ON" : "OFF"}`;
+    render();
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>
