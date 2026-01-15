@@ -1,2 +1,2 @@
-# 1st.osero
-GitHub の最初のプロジェクト
+# About my first project on GitHub
+
